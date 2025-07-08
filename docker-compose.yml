@@ -1,0 +1,23 @@
+version: "3.8"
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/New_York
+      - N8N_BASIC_AUTH_ACTIVE=false # Set to true for basic auth
+      # - N8N_BASIC_AUTH_USER= # Uncomment and set username if N8N_BASIC_AUTH_ACTIVE is true
+      # - N8N_BASIC_AUTH_PASSWORD= # Uncomment and set password if N8N_BASIC_AUTH_ACTIVE is true
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - n8n-network
+networks:
+  n8n-network:
+    driver: bridge
+volumes:
+  n8n_data:
