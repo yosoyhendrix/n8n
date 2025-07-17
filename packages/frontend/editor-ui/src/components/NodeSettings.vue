@@ -51,6 +51,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { shouldShowParameter } from './canvas/experimental/experimentalNdv.utils';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
+import { I18nT } from 'vue-i18n';
 
 const props = withDefaults(
 	defineProps<{
@@ -94,6 +95,19 @@ const emit = defineEmits<{
 
 const slots = defineSlots<{ actions?: {} }>();
 
+const nodeValues = ref<INodeParameters>({
+	color: '#ff0000',
+	alwaysOutputData: false,
+	executeOnce: false,
+	notesInFlow: false,
+	onError: 'stopWorkflow',
+	retryOnFail: false,
+	maxTries: 3,
+	waitBetweenTries: 1000,
+	notes: '',
+	parameters: {},
+});
+
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
@@ -106,7 +120,6 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const nodeSettingsParameters = useNodeSettingsParameters();
-const nodeValues = nodeSettingsParameters.nodeValues;
 
 const nodeParameterWrapper = useTemplateRef('nodeParameterWrapper');
 const shouldShowStaticScrollbar = ref(false);
@@ -355,7 +368,11 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 		for (const key of Object.keys(nodeParameters as object)) {
 			if (nodeParameters?.[key] !== null && nodeParameters?.[key] !== undefined) {
-				nodeSettingsParameters.setValue(`parameters.${key}`, nodeParameters[key] as string);
+				nodeSettingsParameters.setValue(
+					nodeValues,
+					`parameters.${key}`,
+					nodeParameters[key] as string,
+				);
 			}
 		}
 
@@ -372,7 +389,13 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
-		nodeSettingsParameters.updateNodeParameter(parameterData, newValue, _node, isToolNode.value);
+		nodeSettingsParameters.updateNodeParameter(
+			nodeValues,
+			parameterData,
+			newValue,
+			_node,
+			isToolNode.value,
+		);
 	} else {
 		// A property on the node itself changed
 
@@ -435,6 +458,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.alwaysOutputData.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.executeOnce.displayName'),
@@ -443,6 +467,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.executeOnce.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.retryOnFail.displayName'),
@@ -451,6 +476,7 @@ const populateSettings = () => {
 					default: false,
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.retryOnFail.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.maxTries.displayName'),
@@ -468,6 +494,7 @@ const populateSettings = () => {
 					},
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.maxTries.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.waitBetweenTries.displayName'),
@@ -485,6 +512,7 @@ const populateSettings = () => {
 					},
 					noDataExpression: true,
 					description: i18n.baseText('nodeSettings.waitBetweenTries.description'),
+					isNodeSetting: true,
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.onError.displayName'),
@@ -514,6 +542,7 @@ const populateSettings = () => {
 					default: 'stopWorkflow',
 					description: i18n.baseText('nodeSettings.onError.description'),
 					noDataExpression: true,
+					isNodeSetting: true,
 				},
 			] as INodeProperties[]),
 		);
@@ -530,6 +559,7 @@ const populateSettings = () => {
 				default: '',
 				noDataExpression: true,
 				description: i18n.baseText('nodeSettings.notes.description'),
+				isNodeSetting: true,
 			},
 			{
 				displayName: i18n.baseText('nodeSettings.notesInFlow.displayName'),
@@ -538,6 +568,7 @@ const populateSettings = () => {
 				default: false,
 				noDataExpression: true,
 				description: i18n.baseText('nodeSettings.notesInFlow.description'),
+				isNodeSetting: true,
 			},
 		] as INodeProperties[]),
 	);
@@ -846,9 +877,10 @@ function handleWheelEvent(event: WheelEvent) {
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n-t
+					<I18nT
 						keypath="nodeSettings.communityNodeUnknown.description"
 						tag="span"
+						scope="global"
 						@click="onMissingNodeTextClick"
 					>
 						<template #action>
@@ -858,7 +890,7 @@ function handleWheelEvent(event: WheelEvent) {
 								>{{ node.type.split('.')[0] }}</a
 							>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -867,7 +899,7 @@ function handleWheelEvent(event: WheelEvent) {
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<I18nT v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span" scope="global">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
@@ -875,7 +907,7 @@ function handleWheelEvent(event: WheelEvent) {
 						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</div>
 		<div
 			v-if="node && nodeValid"
@@ -1096,7 +1128,7 @@ function handleWheelEvent(event: WheelEvent) {
 			&::-webkit-scrollbar-thumb {
 				border-radius: var(--spacing-2xs);
 				background: var(--color-foreground-dark);
-				border: var(--spacing-5xs) solid white;
+				border: var(--spacing-5xs) solid var(--color-background-xlight);
 			}
 		}
 	}
